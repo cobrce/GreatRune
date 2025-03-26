@@ -11,32 +11,29 @@ namespace GreatRune {
     using System.Diagnostics;
     using GreatRune.GameManagers;
     using Terminal.Gui;
-    using Erd_Tools;
-    using PropertyHook;
     using static GreatRune.GameManagers.RunesHelper;
-    using Erd_Tools.Models.Items;
+    using System.Diagnostics.CodeAnalysis;
 
     public partial class MainDialog {
         private string lblStatusOriginalText;
         private readonly object timerToken;
 
-        // private readonly MemoryManager memoryManager  = new();
-        // private readonly ProcessSelectorFSM processSelectorFSM;
+        private readonly MemoryManager memoryManager  = new();
+        private readonly ProcessSelectorFSM processSelectorFSM;
         const string EldenRingProcessName = "eldenring";
 
-        private ErdHook hook;
 
         public MainDialog() {
             InitializeComponent();
-            hook = new(1000, 1000, 
-                p => p.MainWindowTitle is "ELDEN RING™" 
-                     || (p.MainWindowTitle is "ELDEN RING" && p.ProcessName == "eldenring"));
+            // hook = new(1000, 1000, 
+            //     p => p.MainWindowTitle is "ELDEN RING™" 
+            //          || (p.MainWindowTitle is "ELDEN RING" && p.ProcessName == "eldenring"));
 
 
 
-            hook.OnSetup+=hook_OnSetup;
-            hook.OnUnhooked+=hook_OnUnhooked;
-            // processSelectorFSM = new ProcessSelectorFSM(EldenRingProcessName,memoryManager);
+            // hook.OnSetup+=hook_OnSetup;
+            // hook.OnUnhooked+=hook_OnUnhooked;
+            processSelectorFSM = new ProcessSelectorFSM(EldenRingProcessName,memoryManager);
             timerToken = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(200),TimerTick);
 
             btnQuit.Clicked += ()=>{
@@ -59,15 +56,15 @@ namespace GreatRune {
 
 
 #nullable enable
-        private void hook_OnUnhooked(object? sender, PHEventArgs e)
-        {
-            GameProcess = null;
-        }
+        // private void hook_OnUnhooked(object? sender, PHEventArgs e)
+        // {
+        //     GameProcess = null;
+        // }
 
-        void hook_OnSetup(object? sender, PHEventArgs e)
-        {
-            GameProcess = hook.Process;
-        }
+        // void hook_OnSetup(object? sender, PHEventArgs e)
+        // {
+        //     GameProcess = hook.Process;
+        // }
 
         Process? _gameProcess;
         public Process? GameProcess
@@ -88,8 +85,13 @@ namespace GreatRune {
 
         private bool TimerTick(MainLoop mainLoop)
         {
-            hook.Refresh();
-            if (GameProcess==null)
+            processSelectorFSM.SearchForProcess(out Process? process);
+            GameProcess = process;
+            if (!memoryManager.IsOpen)
+                // ReadGreatRunes();
+
+            // hook.Refresh();
+            // if (GameProcess==null)
                 return true;
 
             ReadGreatRunes(out GreatRunesRecord greatRunes, out GreatRunesRecord activatedRunes);
@@ -102,28 +104,27 @@ namespace GreatRune {
         private void ActivateRunes(GreatRunesRecord greatRunes, GreatRunesRecord activatedRunes)
         {
             if (greatRunes.Godrick && !activatedRunes.Godrick)
-                SpawnItem((int)GreatRunesID.GODRICK_S_GREAT_RUNE);
+                SpawnItem((int)GreatRunesID.GODRICK_S_GREAT_RUNE | 0x4000_0000);
 
             if (greatRunes.Malenia && !activatedRunes.Malenia)
-                SpawnItem((int)GreatRunesID.MALENIA_S_GREAT_RUNE);
+                SpawnItem((int)GreatRunesID.MALENIA_S_GREAT_RUNE | 0x4000_0000);
 
             if (greatRunes.Mohg && !activatedRunes.Mohg)
-                SpawnItem((int)GreatRunesID.MOHG_S_GREAT_RUNE);
+                SpawnItem((int)GreatRunesID.MOHG_S_GREAT_RUNE | 0x4000_0000);
 
             if (greatRunes.Morgott && !activatedRunes.Morgott)
-                SpawnItem((int)GreatRunesID.MORGOTT_S_GREAT_RUNE);
+                SpawnItem((int)GreatRunesID.MORGOTT_S_GREAT_RUNE | 0x4000_0000);
 
             if (greatRunes.Radahn && !activatedRunes.Radahn)
-                SpawnItem((int)GreatRunesID.RADAHN_S_GREAT_RUNE);
+                SpawnItem((int)GreatRunesID.RADAHN_S_GREAT_RUNE | 0x4000_0000);
 
             if (greatRunes.Rykard && !activatedRunes.Rykard)
-                SpawnItem((int)GreatRunesID.RYKARD_S_GREAT_RUNE);
+                SpawnItem((int)GreatRunesID.RYKARD_S_GREAT_RUNE | 0x4000_0000);
         }
 
         private void SpawnItem(int id)
         {
-            ItemSpawnInfo item = new(id,Erd_Tools.Models.Item.Category.Goods,1,0,0,0);
-            hook.GetItem(item);
+            memoryManager.ItemGib(id,1);
         }
 
         private void UpdateInterface(GreatRunesRecord greatRunes, GreatRunesRecord activatedRunes)
@@ -148,12 +149,19 @@ namespace GreatRune {
 
         private void ReadGreatRunes(out GreatRunesRecord greatRunes, out GreatRunesRecord activatedRunes)
         {
-            var inventory = hook.PlayerGameData.Inventory.GetKeyInventory();
+            if (!memoryManager.UpdateInventory())
+            {
+                greatRunes = new(false,false,false,false,false,false,false);
+                activatedRunes = new(false,false,false,false,false,false,false);
+                return;
+            }
 
-            uint[] inventoryItems = inventory.Select((entry) =>(uint)entry.ItemID).ToArray();;
+            // var inventory = hook.PlayerGameData.Inventory.GetKeyInventory();
 
-            greatRunes = RunesHelper.GreatRunes(inventoryItems);
-            activatedRunes = RunesHelper.ActivatedRunes(inventoryItems);
+            // uint[] inventoryItems = inventory.Select((entry) =>(uint)entry.ItemID).ToArray();;
+
+            greatRunes = RunesHelper.GreatRunes(memoryManager.InventoryItems);
+            activatedRunes = RunesHelper.ActivatedRunes(memoryManager.InventoryItems);
 
           
         }
