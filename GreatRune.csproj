@@ -9,7 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="keystoneengine.csharp" Version="0.9.1.1" />
     <PackageReference Include="Terminal.Gui" Version="1.18.0" />
+    <Reference Include="Erd-Tools">
+      <HintPath>Erd-Tools\net8.0-windows7.0\Erd-Tools.dll</HintPath>
+    </Reference>
+    <Reference Include="PropertyHook">
+      <HintPath>Erd-Tools\net8.0-windows7.0\PropertyHook.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
