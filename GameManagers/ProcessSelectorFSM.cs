@@ -25,7 +25,7 @@ namespace GreatRune.GameManagers
             searchState = SearchState.NotFound;
         }
 
-        public bool SearchForProcess(out Process? GameProcess)
+        public bool Update(out Process? GameProcess)
         {
             bool result = false;
             switch (searchState)

@@ -25,16 +25,8 @@ namespace GreatRune {
 
         public MainDialog() {
             InitializeComponent();
-            // hook = new(1000, 1000, 
-            //     p => p.MainWindowTitle is "ELDEN RING™" 
-            //          || (p.MainWindowTitle is "ELDEN RING" && p.ProcessName == "eldenring"));
-
-
-
-            // hook.OnSetup+=hook_OnSetup;
-            // hook.OnUnhooked+=hook_OnUnhooked;
             processSelectorFSM = new ProcessSelectorFSM(EldenRingProcessName,memoryManager);
-            timerToken = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(200),TimerTick);
+            timerToken = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(1000),TimerTick);
 
             btnQuit.Clicked += ()=>{
                 Application.MainLoop.RemoveTimeout(timerToken);
@@ -51,20 +43,10 @@ namespace GreatRune {
             chkRadahn.Enabled =  false;
             chkRennala.Enabled = false;
             chkRykard.Enabled = false;
-
         }
 
 
 #nullable enable
-        // private void hook_OnUnhooked(object? sender, PHEventArgs e)
-        // {
-        //     GameProcess = null;
-        // }
-
-        // void hook_OnSetup(object? sender, PHEventArgs e)
-        // {
-        //     GameProcess = hook.Process;
-        // }
 
         Process? _gameProcess;
         public Process? GameProcess
@@ -74,24 +56,22 @@ namespace GreatRune {
             {
                 chkAuto.Enabled = (value != null);
                 if (_gameProcess!=value)
+                {
                     chkAuto.Checked = false;
-                
+                    lblStatus.Text = (value != null) ? $" Process found, ID : {value.Id}" : lblStatusOriginalText;
+                    lblStatus.ColorScheme = (value != null) ? gold : null;
+                }
                 _gameProcess = value;
-                lblStatus.Text = (value != null) ? $" Process found, ID : {value.Id}" : lblStatusOriginalText;
-                lblStatus.ColorScheme = (value != null) ? gold : null;
             }
         }
 
 
         private bool TimerTick(MainLoop mainLoop)
         {
-            processSelectorFSM.SearchForProcess(out Process? process);
-            GameProcess = process;
-            if (!memoryManager.IsOpen)
-                // ReadGreatRunes();
+            processSelectorFSM.Update(out Process? process);
 
-            // hook.Refresh();
-            // if (GameProcess==null)
+            Application.MainLoop.Invoke(()=> { GameProcess = process;});
+            if (!memoryManager.IsOpen)
                 return true;
 
             ReadGreatRunes(out GreatRunesRecord greatRunes, out GreatRunesRecord activatedRunes);
@@ -129,6 +109,7 @@ namespace GreatRune {
 
         private void UpdateInterface(GreatRunesRecord greatRunes, GreatRunesRecord activatedRunes)
         {
+            Application.MainLoop.Invoke(()=>{
             chkGodrick.Checked = greatRunes.Godrick | activatedRunes.Godrick;
             chkMalenia.Checked = greatRunes.Malenia | activatedRunes.Malenia;
             chkMohg.Checked = greatRunes.Mohg | activatedRunes.Mohg;
@@ -144,7 +125,7 @@ namespace GreatRune {
             chkRadahn.ColorScheme = activatedRunes.Radahn ? gold :null;
             chkRennala.ColorScheme = activatedRunes.Rennala ? gold :null;
             chkRykard.ColorScheme = activatedRunes.Rykard ? gold :null;
-
+            });
         }
 
         private void ReadGreatRunes(out GreatRunesRecord greatRunes, out GreatRunesRecord activatedRunes)
@@ -155,10 +136,6 @@ namespace GreatRune {
                 activatedRunes = new(false,false,false,false,false,false,false);
                 return;
             }
-
-            // var inventory = hook.PlayerGameData.Inventory.GetKeyInventory();
-
-            // uint[] inventoryItems = inventory.Select((entry) =>(uint)entry.ItemID).ToArray();;
 
             greatRunes = RunesHelper.GreatRunes(memoryManager.InventoryItems);
             activatedRunes = RunesHelper.ActivatedRunes(memoryManager.InventoryItems);

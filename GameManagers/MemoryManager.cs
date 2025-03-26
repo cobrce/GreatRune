@@ -64,6 +64,9 @@ namespace GreatRune.GameManagers
             // if (hProcess == IntPtr.Zero)
             //     return false;
 
+            if (process == null || process.MainModule == null)
+                return false;
+
             if (
                 !FindAobAndExtractPointer(
                     process.MainModule.BaseAddress,
@@ -156,6 +159,9 @@ namespace GreatRune.GameManagers
             if (ItemGive != 0)
                 return true;
 
+            if (Process == null || Process.MainModule == null)
+                return false;
+
             const string AOB = "8B 02 83 F8 0A";
             if (!FindAOB(Process.MainModule.BaseAddress, AOB, out nuint result))
                 return false;
@@ -167,6 +173,9 @@ namespace GreatRune.GameManagers
         {
             if (MapItemMan != 0)
                 return true;
+
+            if (Process == null || Process.MainModule == null)
+                return false;
 
             // base.RegisterRelativeAOB("48 8B 0D ? ? ? ? C7 44 24 50 FF FF FF FF C7 45 A0 FF FF FF FF 48 85 C9 75 2E", 3, 7, Array.Empty<int>());
             const string AOB =
@@ -303,6 +312,9 @@ namespace GreatRune.GameManagers
             const int pointerOffset = 3;
             if (GameDataMan != 0)
                 return true;
+
+            if (Process == null || Process.MainModule == null)
+                return false;
             if (
                 !FindAobAndExtractPointer(
                     Process.MainModule.BaseAddress,
