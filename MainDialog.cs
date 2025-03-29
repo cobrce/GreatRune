@@ -7,42 +7,61 @@
 //      You can make changes to this file and they will not be overwritten when saving.
 //  </auto-generated>
 // -----------------------------------------------------------------------------
-namespace GreatRune {
+namespace GreatRune
+{
     using System.Diagnostics;
     using GreatRune.GameManagers;
     using Terminal.Gui;
     using static GreatRune.GameManagers.RunesHelper;
     using System.Diagnostics.CodeAnalysis;
 
-    public partial class MainDialog {
+    public partial class MainDialog
+    {
         private string lblStatusOriginalText;
         private readonly object timerToken;
 
-        private readonly MemoryManager memoryManager  = new();
+        private readonly MemoryManager memoryManager = new();
         private readonly ProcessSelectorFSM processSelectorFSM;
         const string EldenRingProcessName = "eldenring";
 
+        Dictionary<Terminal.Gui.Label, int> LabelGreatRuneID_Dict = new();
 
-        public MainDialog() {
+        public MainDialog()
+        {
             InitializeComponent();
-            processSelectorFSM = new ProcessSelectorFSM(EldenRingProcessName,memoryManager);
-            timerToken = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(1000),TimerTick);
+            processSelectorFSM = new ProcessSelectorFSM(EldenRingProcessName, memoryManager);
+            timerToken = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(1000), TimerTick);
 
-            btnQuit.Clicked += ()=>{
+            btnQuit.Clicked += () =>
+            {
                 Application.MainLoop.RemoveTimeout(timerToken);
                 Application.RequestStop();
-                };
+            };
             this.lblStatusOriginalText = lblStatus.Text.ToString();
             lblStatus.ColorScheme = null;
+            lblStatus.Enabled = false;
 
-            chkGodrick.Enabled = false;
-            chkMalenia.Enabled = false;
-            chkMohg.Enabled = false;
-            chkMorgott.Enabled = false;
-            chkRadahn.Enabled = false;
-            chkRadahn.Enabled =  false;
-            chkRennala.Enabled = false;
-            chkRykard.Enabled = false;
+            LabelGreatRuneID_Dict[lblGodrick] = 0x4000_0000 | (int)GreatRunesID.GODRICK_S_GREAT_RUNE;
+            LabelGreatRuneID_Dict[lblMalenia] = 0x4000_0000 | (int)GreatRunesID.MALENIA_S_GREAT_RUNE;
+            LabelGreatRuneID_Dict[lblMohg] = 0x4000_0000 | (int)GreatRunesID.MOHG_S_GREAT_RUNE;
+            LabelGreatRuneID_Dict[lblMorgott] = 0x4000_0000 | (int)GreatRunesID.MORGOTT_S_GREAT_RUNE;
+            LabelGreatRuneID_Dict[lblRadahn] = 0x4000_0000 | (int)GreatRunesID.RADAHN_S_GREAT_RUNE;
+            LabelGreatRuneID_Dict[lblRykard] = 0x4000_0000 | (int)GreatRunesID.RYKARD_S_GREAT_RUNE;
+
+            foreach (var label in LabelGreatRuneID_Dict.Keys)
+                label.Clicked += () => { LabelClicked(label); };
+        }
+
+        private void LabelClicked(Terminal.Gui.Label label)
+        {
+            if (!memoryManager.IsOpen || // process not open
+                label.ColorScheme == gold || // rune already activated
+                label.Text.ToString()[0] =='-' || // rune not in invetory
+                // message box answered "No"
+                (0 != MessageBox.Query("GreatRune", $"Activate {label.Text.ToString().Substring(2)} great rune?", new NStack.ustring[] { "Yes", "No" }))) 
+                return;
+
+            SpawnItem(LabelGreatRuneID_Dict[label]);
         }
 
 
@@ -55,7 +74,7 @@ namespace GreatRune {
             private set
             {
                 chkAuto.Enabled = (value != null);
-                if (_gameProcess!=value)
+                if (_gameProcess != value)
                 {
                     chkAuto.Checked = false;
                     lblStatus.Text = (value != null) ? $" Process found, ID : {value.Id}" : lblStatusOriginalText;
@@ -70,14 +89,14 @@ namespace GreatRune {
         {
             processSelectorFSM.Update(out Process? process);
 
-            Application.MainLoop.Invoke(()=> { GameProcess = process;});
+            Application.MainLoop.Invoke(() => { GameProcess = process; });
             if (!memoryManager.IsOpen)
                 return true;
 
             ReadGreatRunes(out GreatRunesRecord greatRunes, out GreatRunesRecord activatedRunes);
-            UpdateInterface(greatRunes,activatedRunes);
+            UpdateInterface(greatRunes, activatedRunes);
             if (chkAuto.Checked)
-                ActivateRunes(greatRunes,activatedRunes);
+                ActivateRunes(greatRunes, activatedRunes);
             return true;
         }
 
@@ -104,27 +123,39 @@ namespace GreatRune {
 
         private void SpawnItem(int id)
         {
-            memoryManager.ItemGib(id,1);
+            memoryManager.ItemGib(id, 1);
+        }
+
+
+        private void UpdateLabelText(Terminal.Gui.Label label, bool enabled)
+        {
+            if (label == null)
+                return;
+            var text = label?.Text?.ToString()?.Substring(1);
+            text = (enabled ? "√" : "-") + text;
+            label.Text = text;
+
         }
 
         private void UpdateInterface(GreatRunesRecord greatRunes, GreatRunesRecord activatedRunes)
         {
-            Application.MainLoop.Invoke(()=>{
-            chkGodrick.Checked = greatRunes.Godrick | activatedRunes.Godrick;
-            chkMalenia.Checked = greatRunes.Malenia | activatedRunes.Malenia;
-            chkMohg.Checked = greatRunes.Mohg | activatedRunes.Mohg;
-            chkMorgott.Checked = greatRunes.Morgott | activatedRunes.Morgott;
-            chkRadahn.Checked = greatRunes.Radahn | activatedRunes.Radahn;
-            chkRennala.Checked = greatRunes.Rennala | activatedRunes.Rennala;
-            chkRykard.Checked = greatRunes.Rykard | activatedRunes.Rykard;
+            Application.MainLoop.Invoke(() =>
+            {
+                UpdateLabelText(lblGodrick, greatRunes.Godrick | activatedRunes.Godrick);
+                UpdateLabelText(lblMalenia, greatRunes.Malenia | activatedRunes.Malenia);
+                UpdateLabelText(lblMohg, greatRunes.Mohg | activatedRunes.Mohg);
+                UpdateLabelText(lblMorgott, greatRunes.Morgott | activatedRunes.Morgott);
+                UpdateLabelText(lblRadahn, greatRunes.Radahn | activatedRunes.Radahn);
+                UpdateLabelText(lblRennala, greatRunes.Rennala | activatedRunes.Rennala);
+                UpdateLabelText(lblRykard, greatRunes.Rykard | activatedRunes.Rykard);
 
-            chkGodrick.ColorScheme = activatedRunes.Godrick ? gold :null;
-            chkMalenia.ColorScheme = activatedRunes.Malenia ? gold :null;
-            chkMohg.ColorScheme = activatedRunes.Mohg ? gold :null;
-            chkMorgott.ColorScheme = activatedRunes.Morgott ? gold :null;
-            chkRadahn.ColorScheme = activatedRunes.Radahn ? gold :null;
-            chkRennala.ColorScheme = activatedRunes.Rennala ? gold :null;
-            chkRykard.ColorScheme = activatedRunes.Rykard ? gold :null;
+                lblGodrick.ColorScheme = activatedRunes.Godrick ? gold : null;
+                lblMalenia.ColorScheme = activatedRunes.Malenia ? gold : null;
+                lblMohg.ColorScheme = activatedRunes.Mohg ? gold : null;
+                lblMorgott.ColorScheme = activatedRunes.Morgott ? gold : null;
+                lblRadahn.ColorScheme = activatedRunes.Radahn ? gold : null;
+                lblRennala.ColorScheme = activatedRunes.Rennala ? gold : null;
+                lblRykard.ColorScheme = activatedRunes.Rykard ? gold : null;
             });
         }
 
@@ -132,15 +163,15 @@ namespace GreatRune {
         {
             if (!memoryManager.UpdateInventory())
             {
-                greatRunes = new(false,false,false,false,false,false,false);
-                activatedRunes = new(false,false,false,false,false,false,false);
+                greatRunes = new(false, false, false, false, false, false, false);
+                activatedRunes = new(false, false, false, false, false, false, false);
                 return;
             }
 
             greatRunes = RunesHelper.GreatRunes(memoryManager.InventoryItems);
             activatedRunes = RunesHelper.ActivatedRunes(memoryManager.InventoryItems);
 
-          
+
         }
     }
 }
